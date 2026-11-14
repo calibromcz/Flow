@@ -7,6 +7,7 @@ import { formatCurrency, formatDate, CategoryIcon, PrivacyAmount } from './Categ
 import { SmartSpotlightBar } from './SmartSpotlightBar';
 import { SavingsGoalsWidget } from './SavingsGoalsWidget';
 import { MonthRolloverBanner } from './MonthRolloverBanner';
+import { WalletSelectorPills } from './WalletSelectorPills';
 import {
   ChevronLeft,
   ChevronRight,
@@ -198,6 +199,13 @@ export const TabHome = ({ onOpenSheet }) => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* SELETTORE MULTI-PORTAFOGLIO / MULTI-CONTO (Apple Pills)  */}
+      {/* ========================================================= */}
+      <div className="px-0.5">
+        <WalletSelectorPills />
       </div>
 
       {/* ========================================================= */}

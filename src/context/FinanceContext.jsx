@@ -25,6 +25,10 @@ export const DEFAULT_FALLBACK_CATEGORIES = {
   ]
 };
 
+export const DEFAULT_WALLETS = [
+  { id: 'main', name: 'Principale', type: 'personal', icon: 'Wallet', color: '#007AFF' }
+];
+
 // PRODUZIONE PULITA: nessun dato mock/finto iniziale
 const SEED_DEMO_TRANSACTIONS = [];
 const SEED_DEMO_GOALS = [];
@@ -36,6 +40,21 @@ export const FinanceProvider = ({ children }) => {
   const [categories, setCategories] = useState(DEFAULT_FALLBACK_CATEGORIES);
   const [savingsGoals, setSavingsGoals] = useState([]);
   const [amortizations, setAmortizations] = useState([]);
+  
+  // 1. STATO MULTI-PORTAFOGLIO / MULTI-CONTO (Personal, Shared, Savings)
+  const [wallets, setWallets] = useState(() => {
+    try {
+      const raw = localStorage.getItem('flow_wallets_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_WALLETS;
+  });
+
+  const [activeWalletId, setActiveWalletId] = useState('all'); // 'all' oppure specifico wallet.id
+
   const [savingTargetPercent, setSavingTargetPercent] = useState(() => {
     try {
       const saved = localStorage.getItem('flow_savings_target_pct');
@@ -204,11 +223,55 @@ export const FinanceProvider = ({ children }) => {
     );
   };
 
+  // Gestione persistenza portafogli
+  const persistWallets = (updatedWallets) => {
+    setWallets(updatedWallets);
+    try {
+      localStorage.setItem('flow_wallets_v1', JSON.stringify(updatedWallets));
+    } catch (e) {
+      console.warn("Errore salvataggio portafogli:", e);
+    }
+  };
+
+  const addWallet = (walletData) => {
+    const newWallet = {
+      id: 'wallet_' + Date.now(),
+      name: walletData.name.trim(),
+      type: walletData.type || 'personal', // 'personal' | 'shared'
+      icon: walletData.icon || 'Wallet',
+      color: walletData.color || (walletData.type === 'shared' ? '#AF52DE' : '#007AFF'),
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...wallets, newWallet];
+    persistWallets(updated);
+    setActiveWalletId(newWallet.id);
+    message.success(`Conto "${newWallet.name}" creato!`);
+    return newWallet;
+  };
+
+  const deleteWallet = (walletId) => {
+    if (walletId === 'main') {
+      message.error("Non puoi eliminare il Conto Principale.");
+      return;
+    }
+    const updated = wallets.filter(w => w.id !== walletId);
+    persistWallets(updated);
+    if (activeWalletId === walletId) {
+      setActiveWalletId('all');
+    }
+    message.info("Conto rimosso.");
+  };
+
   const addTransaction = async (txData) => {
     const parsedAmt = parseAmount(txData.amount);
+    const assignedWalletId = txData.walletId || (activeWalletId !== 'all' ? activeWalletId : 'main');
+
     const newTx = {
       id: 'tx_' + Date.now(),
       user_id: user?.id,
+      walletId: assignedWalletId,
+      isSplit50: Boolean(txData.isSplit50),
+      rawAmount: txData.rawAmount !== undefined ? parseAmount(txData.rawAmount) : parsedAmt,
       type: txData.type,
       amount: parsedAmt,
       category: txData.category,
@@ -513,17 +576,31 @@ export const FinanceProvider = ({ children }) => {
     return map;
   }, [categories]);
 
-  // Transazioni mese selezionato
+  // Helper per filtrare le transazioni in base al wallet selezionato
+  // Retrocompatibilità totale: se tx.walletId manca, appartiene a 'main'
+  const filterByActiveWallet = (txList) => {
+    if (activeWalletId === 'all') return txList;
+    return txList.filter(t => (t.walletId || 'main') === activeWalletId);
+  };
+
+  // Transazioni mese selezionato (filtrate per il wallet attivo)
   const monthlyTransactions = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
-    return transactions.filter(t => {
+    const monthList = transactions.filter(t => {
       if (!t.date) return false;
       const [y, m] = t.date.split('-').map(Number);
       return y === year && (m - 1) === month;
     });
-  }, [transactions, currentDate]);
+
+    return filterByActiveWallet(monthList);
+  }, [transactions, currentDate, activeWalletId]);
+
+  // Transazioni globali filtrate per il wallet attivo (per liste, recenti, etc.)
+  const filteredTransactions = useMemo(() => {
+    return filterByActiveWallet(transactions);
+  }, [transactions, activeWalletId]);
 
   // Funzionalità #2: Calcolo Confronto Colpo d'Occhio (vs Mese Precedente a pari giorni)
   const previousMonthComparison = useMemo(() => {
@@ -775,7 +852,14 @@ export const FinanceProvider = ({ children }) => {
         addAmortization,
         updateAmortizationProgress,
         deleteAmortization,
-        resetAllUserData
+        resetAllUserData,
+        // Multi-portafoglio / Multi-conto
+        wallets,
+        activeWalletId,
+        setActiveWalletId,
+        addWallet,
+        deleteWallet,
+        filteredTransactions
       }}
     >
       {children}

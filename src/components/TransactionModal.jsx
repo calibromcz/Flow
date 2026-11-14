@@ -18,7 +18,7 @@ import { message, Modal } from 'antd';
 import { parseAmount } from '../utils/numberUtils';
 
 export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', presetAmount = null }) => {
-  const { categories, addTransaction, addCategory } = useFinance();
+  const { categories, addTransaction, addCategory, wallets, activeWalletId } = useFinance();
   const [type, setType] = useState(defaultType);
   const [amountStr, setAmountStr] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -26,6 +26,10 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Multi-Portafoglio & Split 50%
+  const [targetWalletId, setTargetWalletId] = useState('main');
+  const [isSplit50, setIsSplit50] = useState(false);
 
   // Modale creazione categoria personalizzata
   const [customCatModal, setCustomCatModal] = useState(false);
@@ -49,6 +53,12 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
       setNote('');
       setTxDate(new Date().toISOString().split('T')[0]);
       setIsRecurring(false);
+      setIsSplit50(false);
+
+      // Inizializza conto di destinazione in base al conto attivo
+      const initialWallet = (activeWalletId && activeWalletId !== 'all') ? activeWalletId : 'main';
+      setTargetWalletId(initialWallet);
+
       const defaultList = Array.isArray(categories?.[defaultType]) ? categories[defaultType] : [];
       if (defaultList.length > 0) {
         setSelectedCategory(defaultList[0]);
@@ -137,11 +147,17 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
     setSaving(true);
     try {
       const day = txDate ? new Date(txDate).getDate() : new Date().getDate();
+      const finalAmount = isSplit50 ? Math.round((numeric / 2) * 100) / 100 : numeric;
+      const splitNote = isSplit50 ? `${note.trim() ? note.trim() + ' ' : ''}[Diviso 50% su tot. ${numeric} €]` : note.trim();
+
       await addTransaction({
         type,
-        amount: numeric,
+        amount: finalAmount,
+        rawAmount: numeric,
+        isSplit50,
+        walletId: targetWalletId,
         category: selectedCategory.name,
-        note: note.trim(),
+        note: splitNote,
         date: txDate || new Date().toISOString().split('T')[0],
         is_recurring: isRecurring,
         recurring_day: day
@@ -150,6 +166,8 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
       message.success(
         isRecurring
           ? `${type === 'income' ? 'Entrata' : 'Spesa'} ricorrente salvata!`
+          : isSplit50
+          ? `Registrata quota personale (50% = ${finalAmount} €)!`
           : `${type === 'income' ? 'Entrata' : 'Spesa'} registrata!`
       );
       onClose();
@@ -371,6 +389,81 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
               />
             </div>
           </div>
+
+          {/* Selezione Conto di Destinazione & Split 50% */}
+          {wallets && wallets.length > 0 && (
+            <div className="space-y-2 p-3 rounded-2xl bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/60 dark:border-neutral-700">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">
+                  Conto / Portafoglio
+                </span>
+                {wallets.find(w => w.id === targetWalletId)?.type === 'shared' && (
+                  <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/50">
+                    Conto Condiviso
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {wallets.map((w) => {
+                  const isSelected = targetWalletId === w.id;
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => {
+                        setTargetWalletId(w.id);
+                        if (w.type === 'shared') {
+                          setIsSplit50(true);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0 border ${
+                        isSelected
+                          ? 'bg-[#1D1D1F] text-white dark:bg-white dark:text-[#1D1D1F] border-transparent shadow-2xs font-bold'
+                          : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200/80 dark:border-neutral-700'
+                      }`}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: w.color || '#007AFF' }}
+                      />
+                      <span>{w.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Toggle Split 50% se conto condiviso o se l'utente vuole dividere la spesa */}
+              {isExpense && (
+                <div className="pt-2 border-t border-neutral-200/50 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block">
+                      Spesa divisa a metà (50%)
+                    </span>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block">
+                      {isSplit50 
+                        ? `Addebita ${amountStr ? (parseAmount(amountStr) / 2).toFixed(2) : '0,00'} € (la tua quota)` 
+                        : 'Addebita l\'intero importo a questo conto'}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSplit50(!isSplit50)}
+                    className={`w-11 h-6 rounded-full p-0.5 transition cursor-pointer ${
+                      isSplit50 ? 'bg-purple-600' : 'bg-neutral-300 dark:bg-neutral-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full shadow-sm transition transform ${
+                        isSplit50 ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Opzione Ricorrenza Mese (Fisso) */}
           <div className="bg-neutral-100 dark:bg-neutral-800/80 p-3 rounded-2xl flex items-center justify-between border border-neutral-200/60 dark:border-neutral-700">
