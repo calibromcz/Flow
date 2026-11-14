@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --flow-app-bg: #F5F5F7;
+  --flow-card-bg: #FFFFFF;
+  --flow-card-border: #E5E7EB;
+  --flow-text-primary: #1D1D1F;
+  --flow-text-secondary: #86868B;
+  --flow-accent: #007AFF;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+  overflow-x: hidden;
+  background-color: var(--flow-app-bg) !important;
+  color: var(--flow-text-primary) !important;
+}
+
+/* Card Primarie Apple */
+.apple-card {
+  background-color: var(--flow-card-bg);
+  border: 1px solid var(--flow-card-border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 4px 12px 0 rgba(0, 0, 0, 0.03);
+}
+
+.dark .apple-card {
+  background-color: #1C1C1E;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+}
+
+/* Scrollbar Apple */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Forza sfondo globale coordinato alle varianti tema */
+html, body, #root {
+  background-color: var(--flow-app-bg) !important;
+  color: var(--flow-text-primary) !important;
+}
+
+html.dark-theme, 
+html.dark-theme body, 
+html.dark-theme #root {
+  color-scheme: dark !important;
+  background-color: #000000 !important;
+  color: #F5F5F7 !important;
+}
