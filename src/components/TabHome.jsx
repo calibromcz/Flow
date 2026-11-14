@@ -120,7 +120,89 @@ export const TabHome = ({ onOpenSheet }) => {
       <MonthRolloverBanner />
 
       {/* ========================================================= */}
-      {/* RIGA 1: "CASHFLOW" E "SALVADANAIO" SULLA STESSA RIGA      */}
+      {/* 1. IN CIMA: SCHEDE / PULSANTI DI ENTRATE E USCITE        */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        {/* Card Totale Entrate */}
+        <div
+          className="apple-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-colors shadow-xs"
+          style={{ backgroundColor: !isDark && palette?.incomeCardBg ? palette.incomeCardBg : undefined }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#86868B] dark:text-gray-400">
+              Totale Entrate
+            </span>
+            <button
+              type="button"
+              onClick={() => onOpenSheet('income')}
+              className="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white flex items-center justify-center transition cursor-pointer shadow-sm hover:shadow-md"
+              title="Aggiungi Entrata"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          <div className="my-1.5 sm:my-2">
+            <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#34C759] tracking-tight block">
+              <PrivacyAmount amount={income} />
+            </span>
+          </div>
+        </div>
+
+        {/* Card Totale Uscite */}
+        <div
+          className="apple-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-colors shadow-xs"
+          style={{ backgroundColor: !isDark && palette?.expenseCardBg ? palette.expenseCardBg : undefined }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#86868B] dark:text-gray-400">
+              Totale Uscite
+            </span>
+            <button
+              type="button"
+              onClick={() => onOpenSheet('expense')}
+              className="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-95 text-white flex items-center justify-center transition cursor-pointer shadow-sm hover:shadow-md"
+              title="Registra Spesa"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          <div className="my-1.5 sm:my-2">
+            <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#FF3B30] tracking-tight block">
+              <PrivacyAmount amount={expense} />
+            </span>
+
+            {/* Confronto Mese Scorso compatto */}
+            {previousMonthComparison && (
+              <div className="mt-1">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border ${previousMonthComparison.isLower
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40'
+                      : 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40'
+                    }`}
+                  title={`Confronto sui primi ${previousMonthComparison.daysChecked} giorni del mese`}
+                >
+                  {previousMonthComparison.isLower ? (
+                    <>
+                      <ArrowDown className="w-2.5 h-2.5" />
+                      <span>{Math.abs(previousMonthComparison.diffPercent).toFixed(0)}% vs scorso</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUp className="w-2.5 h-2.5" />
+                      <span>+{Math.abs(previousMonthComparison.diffPercent).toFixed(0)}% vs scorso</span>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2. SUBITO SOTTO: "CASHFLOW" (CON BUSSOLA) E "SALVADANAIO" */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Scheda Cashflow */}
@@ -280,97 +362,14 @@ export const TabHome = ({ onOpenSheet }) => {
       </div>
 
       {/* ========================================================= */}
-      {/* SELETTORE MULTI-PORTAFOGLIO / MULTI-CONTO (Apple Pills)  */}
-      {/* Posizionato esattamente SOPRA le schede Entrata e Uscita */}
+      {/* 3. ANCORA SOTTO: BARRA A PILLOLE DEI CONTI / PORTAFOGLI   */}
       {/* ========================================================= */}
       <div className="my-3 px-0.5">
         <WalletSelectorPills />
       </div>
 
       {/* ========================================================= */}
-      {/* RIGA 2: TOTALE ENTRATE & TOTALE USCITE AFFIANCATI        */}
-      {/* ========================================================= */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {/* Card Totale Entrate */}
-        <div
-          className="apple-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-colors shadow-xs"
-          style={{ backgroundColor: !isDark && palette?.incomeCardBg ? palette.incomeCardBg : undefined }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#86868B] dark:text-gray-400">
-              Totale Entrate
-            </span>
-            <button
-              type="button"
-              onClick={() => onOpenSheet('income')}
-              className="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white flex items-center justify-center transition cursor-pointer shadow-sm hover:shadow-md"
-              title="Aggiungi Entrata"
-            >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
-            </button>
-          </div>
-
-          <div className="my-1.5 sm:my-2">
-            <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#34C759] tracking-tight block">
-              <PrivacyAmount amount={income} />
-            </span>
-          </div>
-        </div>
-
-        {/* Card Totale Uscite */}
-        <div
-          className="apple-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between transition-colors shadow-xs"
-          style={{ backgroundColor: !isDark && palette?.expenseCardBg ? palette.expenseCardBg : undefined }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#86868B] dark:text-gray-400">
-              Totale Uscite
-            </span>
-            <button
-              type="button"
-              onClick={() => onOpenSheet('expense')}
-              className="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-95 text-white flex items-center justify-center transition cursor-pointer shadow-sm hover:shadow-md"
-              title="Registra Spesa"
-            >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
-            </button>
-          </div>
-
-          <div className="my-1.5 sm:my-2">
-            <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#FF3B30] tracking-tight block">
-              <PrivacyAmount amount={expense} />
-            </span>
-
-            {/* Confronto Mese Scorso compatto */}
-            {previousMonthComparison && (
-              <div className="mt-1">
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border ${previousMonthComparison.isLower
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40'
-                      : 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40'
-                    }`}
-                  title={`Confronto sui primi ${previousMonthComparison.daysChecked} giorni del mese`}
-                >
-                  {previousMonthComparison.isLower ? (
-                    <>
-                      <ArrowDown className="w-2.5 h-2.5" />
-                      <span>{Math.abs(previousMonthComparison.diffPercent).toFixed(0)}% vs scorso</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUp className="w-2.5 h-2.5" />
-                      <span>+{Math.abs(previousMonthComparison.diffPercent).toFixed(0)}% vs scorso</span>
-                    </>
-                  )}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* RIGA 3: ULTIME OPERAZIONI (SENZA TASTO +) & FISSI PREDITTIVI */}
+      {/* RIGA 4: ULTIME OPERAZIONI (SENZA TASTO +) & FISSI PREDITTIVI */}
       {/* ========================================================= */}
       <div className="apple-card rounded-3xl p-5 sm:p-6 space-y-3.5 shadow-xs">
         <div className="flex items-center justify-between">
