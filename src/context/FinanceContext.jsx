@@ -233,19 +233,121 @@ export const FinanceProvider = ({ children }) => {
     }
   };
 
+  const generateShareCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'FLW-';
+    for (let i = 0; i < 3; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
   const addWallet = (walletData) => {
+    const isShared = walletData.type === 'shared';
+    const generatedCode = walletData.shareCode || (isShared ? generateShareCode() : null);
+
     const newWallet = {
-      id: 'wallet_' + Date.now(),
+      id: walletData.id || ('wallet_' + Date.now()),
       name: walletData.name.trim(),
       type: walletData.type || 'personal', // 'personal' | 'shared'
-      icon: walletData.icon || 'Wallet',
-      color: walletData.color || (walletData.type === 'shared' ? '#AF52DE' : '#007AFF'),
+      icon: walletData.icon || (isShared ? 'Users' : 'Wallet'),
+      color: walletData.color || (isShared ? '#AF52DE' : '#007AFF'),
+      shareCode: generatedCode,
+      shared_wallet_id: walletData.shared_wallet_id || (isShared ? (walletData.id || ('wallet_' + Date.now())) : null),
       createdAt: new Date().toISOString()
     };
+
+    // Salva nei wallet condivisi globali per sync multi-telefono/multi-utente
+    if (isShared && generatedCode) {
+      try {
+        const rawShared = localStorage.getItem('flow_shared_wallets') || '{}';
+        const parsedShared = JSON.parse(rawShared);
+        parsedShared[generatedCode] = {
+          name: newWallet.name,
+          color: newWallet.color,
+          shared_wallet_id: newWallet.shared_wallet_id || newWallet.id,
+          shareCode: generatedCode,
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem('flow_shared_wallets', JSON.stringify(parsedShared));
+      } catch (e) {
+        console.warn("Errore salvataggio shared wallet:", e);
+      }
+    }
+
     const updated = [...wallets, newWallet];
     persistWallets(updated);
     setActiveWalletId(newWallet.id);
     message.success(`Conto "${newWallet.name}" creato!`);
+    return newWallet;
+  };
+
+  const joinSharedWallet = async (code) => {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      message.error("Inserisci un codice di condivisione valido.");
+      return null;
+    }
+
+    // Controlla se è già presente
+    const exists = wallets.find(w => w.shareCode === cleanCode);
+    if (exists) {
+      setActiveWalletId(exists.id);
+      message.info(`Sei già collegato al conto "${exists.name}".`);
+      return exists;
+    }
+
+    // 1. Prova a recuperare da Supabase (se configurato)
+    let sharedMeta = null;
+    if (user?.isCloud) {
+      try {
+        const { data } = await supabase
+          .from('shared_wallets')
+          .select('*')
+          .eq('share_code', cleanCode)
+          .maybeSingle();
+        if (data) {
+          sharedMeta = {
+            name: data.name,
+            color: data.color || '#AF52DE',
+            shared_wallet_id: data.id || data.shared_wallet_id
+          };
+        }
+      } catch (err) {
+        console.warn("Supabase shared wallet lookup:", err);
+      }
+    }
+
+    // 2. Fallback su flow_shared_wallets in localStorage
+    if (!sharedMeta) {
+      try {
+        const rawShared = localStorage.getItem('flow_shared_wallets') || '{}';
+        const parsedShared = JSON.parse(rawShared);
+        if (parsedShared[cleanCode]) {
+          sharedMeta = parsedShared[cleanCode];
+        }
+      } catch (e) {
+        console.warn("Errore lettura flow_shared_wallets:", e);
+      }
+    }
+
+    // Se non trovato, creiamo comunque il portafoglio condiviso collegato a questo codice
+    const walletName = sharedMeta?.name || `Condiviso ${cleanCode}`;
+    const newWallet = {
+      id: sharedMeta?.shared_wallet_id || ('wallet_shared_' + cleanCode.replace(/[^A-Z0-9]/g, '')),
+      name: walletName,
+      type: 'shared',
+      icon: 'Users',
+      color: sharedMeta?.color || '#AF52DE',
+      shareCode: cleanCode,
+      shared_wallet_id: sharedMeta?.shared_wallet_id || ('shared_' + cleanCode),
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...wallets, newWallet];
+    persistWallets(updated);
+    setActiveWalletId(newWallet.id);
+    message.success(`Collegato con successo al conto "${newWallet.name}"!`);
     return newWallet;
   };
 
@@ -859,6 +961,7 @@ export const FinanceProvider = ({ children }) => {
         setActiveWalletId,
         addWallet,
         deleteWallet,
+        joinSharedWallet,
         filteredTransactions
       }}
     >

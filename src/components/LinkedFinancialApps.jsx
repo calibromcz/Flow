@@ -11,58 +11,65 @@ import {
 import { Modal, message } from 'antd';
 
 /**
- * Dizionario Completo Deep Link Schemi Nativi per App Bancarie
- * Su iOS / Android apre direttamente l'app nativa dello smartphone.
+ * Dizionario Completo Deep Link Schemi Nativi & Universal Links Ufficiali per App Bancarie
+ * Su iOS / iPhone:
+ * - App Fintech che supportano scheme diretto: Satispay, Revolut, PayPal, N26, Wise
+ * - Grandi Banche che non supportano o bloccano scheme non firmati su Safari iOS:
+ *   utilizzano gli HTTPS Universal Links ufficiali o comandi rapidi di sistema.
  */
 export const BANK_SCHEMES = {
-  // ING
-  'ing': 'ing://',
-  'ing direct': 'ing://',
-  'ing bank': 'ing://',
-  'conto arancio': 'ing://',
-
-  // Pagamenti & Fintech
+  // Fintech con schema iOS funzionante
   'satispay': 'satispay://',
   'paypal': 'paypal://',
   'revolut': 'revolut://',
-  'wise': 'wise://',
-  'hype': 'hype://',
   'n26': 'n26://',
-  'bbva': 'bbva://',
-  'isybank': 'isybank://',
-  'illimity': 'illimity://',
+  'wise': 'wise://',
 
-  // Grandi Banche Italiane
-  'intesa': 'intesasanpaolo://',
-  'intesa sanpaolo': 'intesasanpaolo://',
-  'intesasanpaolo': 'intesasanpaolo://',
-  'unicredit': 'unicredit://',
-  'buddybank': 'unicredit://',
-  'fineco': 'fineco://',
-  'finecobank': 'fineco://',
-  'poste': 'postepay://',
-  'postepay': 'postepay://',
-  'bancoposta': 'bancoposta://',
-  'poste italiane': 'postepay://',
-  'bper': 'bper://',
-  'bper banca': 'bper://',
-  'credem': 'credem://',
-  'mediolanum': 'mediolanum://',
-  'banca mediolanum': 'mediolanum://',
-  'flowe': 'flowe://',
-  'mps': 'mps://',
-  'monte dei paschi': 'mps://',
-  'widiba': 'widiba://',
-  'bnl': 'bnl://',
-  'hello bank': 'hellobank://',
-  'credit agricole': 'creditagricole://',
-  'crédit agricole': 'creditagricole://',
+  // Grandi Banche Italiane & Internazionali: HTTPS Universal Links ufficiali per iOS / Safari
+  'ing': 'https://www.ing.it/area-riservata.html',
+  'ing direct': 'https://www.ing.it/area-riservata.html',
+  'ing bank': 'https://www.ing.it/area-riservata.html',
+  'conto arancio': 'https://www.ing.it/area-riservata.html',
+
+  'intesa': 'https://www.intesasanpaolo.com/',
+  'intesa sanpaolo': 'https://www.intesasanpaolo.com/',
+  'intesasanpaolo': 'https://www.intesasanpaolo.com/',
+  'isybank': 'https://www.isybank.com/',
+
+  'unicredit': 'https://www.unicredit.it/',
+  'buddybank': 'https://www.unicredit.it/',
+
+  'fineco': 'https://finecobank.com/',
+  'finecobank': 'https://finecobank.com/',
+
+  'poste': 'https://postepay.poste.it/',
+  'postepay': 'https://postepay.poste.it/',
+  'bancoposta': 'https://www.poste.it/',
+  'poste italiane': 'https://www.poste.it/',
+
+  'bbva': 'https://www.bbva.it/',
+  'hype': 'https://www.hype.it/',
+  'illimity': 'https://www.illimitybank.com/',
+  'bper': 'https://www.bper.it/',
+  'bper banca': 'https://www.bper.it/',
+  'credem': 'https://www.credem.it/',
+  'mediolanum': 'https://www.bancamediolanum.it/',
+  'banca mediolanum': 'https://www.bancamediolanum.it/',
+  'flowe': 'https://www.flowe.com/',
+  'mps': 'https://www.mps.it/',
+  'monte dei paschi': 'https://www.mps.it/',
+  'widiba': 'https://www.widiba.it/',
+  'bnl': 'https://bnl.it/',
+  'hello bank': 'https://hellobank.it/',
+  'credit agricole': 'https://www.credit-agricole.it/',
+  'crédit agricole': 'https://www.credit-agricole.it/',
 
   // Investimenti & Carte
-  'trade republic': 'traderepublic://',
-  'scalable capital': 'scalablecapital://',
-  'amex': 'amex://',
-  'american express': 'amex://'
+  'trade republic': 'https://app.traderepublic.com/',
+  'traderepublic': 'https://app.traderepublic.com/',
+  'scalable capital': 'https://de.scalable.capital/',
+  'amex': 'https://www.americanexpress.com/it-it/',
+  'american express': 'https://www.americanexpress.com/it-it/'
 };
 
 export const BANK_UNIVERSAL_LINKS = BANK_SCHEMES;
@@ -79,19 +86,18 @@ export const resolveBankUrl = (name = '', manualUrl = '') => {
     return cleanManual;
   }
 
-  // 2. Risoluzione tramite dizionario Scheme
+  // 2. Risoluzione tramite dizionario Scheme / Universal Link
   for (const [key, scheme] of Object.entries(BANK_SCHEMES)) {
     if (cleanName.includes(key) || key.includes(cleanName)) {
       return scheme;
     }
   }
 
-  // 3. Fallback scheme pulito dal nome
+  // 3. Fallback: ricerca protetta o link generico
   if (cleanName) {
-    const slug = cleanName.replace(/[^a-z0-9]/g, '');
-    return `${slug}://`;
+    return `https://www.google.com/search?q=${encodeURIComponent(cleanName + ' login app banking')}`;
   }
-  return 'ing://';
+  return 'https://www.ing.it/area-riservata.html';
 };
 
 export const PRESET_APPS = [
@@ -102,8 +108,8 @@ export const PRESET_APPS = [
     color: '#FF6200',
     textColor: '#FFFFFF',
     iconText: 'ING',
-    scheme: 'ing://',
-    webUrl: 'ing://',
+    scheme: 'https://www.ing.it/area-riservata.html',
+    webUrl: 'https://www.ing.it/area-riservata.html',
     description: 'Conto Corrente Arancio'
   },
   {
@@ -146,8 +152,8 @@ export const PRESET_APPS = [
     color: '#006643',
     textColor: '#FFFFFF',
     iconText: 'ISP',
-    scheme: 'intesasanpaolo://',
-    webUrl: 'intesasanpaolo://',
+    scheme: 'https://www.intesasanpaolo.com/',
+    webUrl: 'https://www.intesasanpaolo.com/',
     description: 'Mobile Banking Intesa'
   },
   {
@@ -157,8 +163,8 @@ export const PRESET_APPS = [
     color: '#00A3E0',
     textColor: '#FFFFFF',
     iconText: 'ISY',
-    scheme: 'isybank://',
-    webUrl: 'isybank://',
+    scheme: 'https://www.isybank.com/',
+    webUrl: 'https://www.isybank.com/',
     description: 'Banca 100% digitale'
   },
   {
@@ -168,8 +174,8 @@ export const PRESET_APPS = [
     color: '#E2001A',
     textColor: '#FFFFFF',
     iconText: 'UC',
-    scheme: 'unicredit://',
-    webUrl: 'unicredit://',
+    scheme: 'https://www.unicredit.it/',
+    webUrl: 'https://www.unicredit.it/',
     description: 'App Mobile Banking UniCredit'
   },
   {
@@ -179,8 +185,8 @@ export const PRESET_APPS = [
     color: '#002E6D',
     textColor: '#FFFFFF',
     iconText: 'F',
-    scheme: 'fineco://',
-    webUrl: 'fineco://',
+    scheme: 'https://finecobank.com/',
+    webUrl: 'https://finecobank.com/',
     description: 'Conto & Trading'
   },
   {
@@ -190,8 +196,8 @@ export const PRESET_APPS = [
     color: '#FFCC00',
     textColor: '#002B49',
     iconText: 'PT',
-    scheme: 'postepay://',
-    webUrl: 'postepay://',
+    scheme: 'https://postepay.poste.it/',
+    webUrl: 'https://postepay.poste.it/',
     description: 'Postepay Mobile'
   },
   {
@@ -201,8 +207,8 @@ export const PRESET_APPS = [
     color: '#002B49',
     textColor: '#FFCC00',
     iconText: 'BP',
-    scheme: 'bancoposta://',
-    webUrl: 'bancoposta://',
+    scheme: 'https://www.poste.it/',
+    webUrl: 'https://www.poste.it/',
     description: 'BancoPosta Mobile'
   },
   {
@@ -212,8 +218,8 @@ export const PRESET_APPS = [
     color: '#004481',
     textColor: '#FFFFFF',
     iconText: 'BBVA',
-    scheme: 'bbva://',
-    webUrl: 'bbva://',
+    scheme: 'https://www.bbva.it/',
+    webUrl: 'https://www.bbva.it/',
     description: 'Conto zero spese & cashback'
   },
   {
@@ -234,8 +240,8 @@ export const PRESET_APPS = [
     color: '#00B4D8',
     textColor: '#FFFFFF',
     iconText: 'H',
-    scheme: 'hype://',
-    webUrl: 'hype://',
+    scheme: 'https://www.hype.it/',
+    webUrl: 'https://www.hype.it/',
     description: 'Conto smart e prepagata'
   },
   {
@@ -245,15 +251,15 @@ export const PRESET_APPS = [
     color: '#111111',
     textColor: '#FFFFFF',
     iconText: 'TR',
-    scheme: 'traderepublic://',
-    webUrl: 'traderepublic://',
+    scheme: 'https://app.traderepublic.com/',
+    webUrl: 'https://app.traderepublic.com/',
     description: 'Broker & Conto'
   }
 ];
 
 export const useLinkedFinancialApps = () => {
   const { user } = useAuth();
-  const getStorageKey = () => `flow_bank_shortcuts_v4_${user?.id || 'guest'}`;
+  const getStorageKey = () => `flow_bank_shortcuts_v6_${user?.id || 'guest'}`;
 
   // Sanitizza l'elenco garantendo schema URL nativo
   const sanitizeApps = (appsList) => {
@@ -271,8 +277,8 @@ export const useLinkedFinancialApps = () => {
 
   const [linkedApps, setLinkedApps] = useState(() => {
     try {
-      const key = `flow_bank_shortcuts_v4_${user?.id || 'guest'}`;
-      const local = localStorage.getItem(key) || localStorage.getItem('flow_bank_shortcuts_v4');
+      const key = `flow_bank_shortcuts_v6_${user?.id || 'guest'}`;
+      const local = localStorage.getItem(key) || localStorage.getItem('flow_bank_shortcuts_v6');
       if (local) {
         const parsed = JSON.parse(local);
         return sanitizeApps(parsed);
@@ -285,7 +291,7 @@ export const useLinkedFinancialApps = () => {
         PRESET_APPS[3]  // Revolut
       ];
     } catch (e) {
-      console.warn("Parsing flow_bank_shortcuts_v4 fallito:", e);
+      console.warn("Parsing flow_bank_shortcuts_v6 fallito:", e);
       return [];
     }
   });
@@ -293,8 +299,8 @@ export const useLinkedFinancialApps = () => {
   useEffect(() => {
     if (!user) return;
     try {
-      const key = `flow_bank_shortcuts_v4_${user.id}`;
-      const local = localStorage.getItem(key) || localStorage.getItem('flow_bank_shortcuts_v4');
+      const key = `flow_bank_shortcuts_v6_${user.id}`;
+      const local = localStorage.getItem(key) || localStorage.getItem('flow_bank_shortcuts_v6');
       if (local) {
         const parsed = JSON.parse(local);
         if (Array.isArray(parsed)) {
@@ -314,7 +320,7 @@ export const useLinkedFinancialApps = () => {
       const key = getStorageKey();
       const serialized = JSON.stringify(sanitized);
       localStorage.setItem(key, serialized);
-      localStorage.setItem('flow_bank_shortcuts_v4', serialized);
+      localStorage.setItem('flow_bank_shortcuts_v6', serialized);
     } catch (e) {
       console.error(e);
     }
@@ -403,13 +409,32 @@ export const LinkedFinancialAppsProfileCard = () => {
     setSelectedPresetId('');
   };
 
-  const handleOpenBank = (schemeUrl) => {
-    if (!schemeUrl) return;
+  const handleOpenBank = (targetUrl, appName = '') => {
+    if (!targetUrl) return;
     try {
-      window.location.href = schemeUrl;
+      // Se è uno schema nativo (es. satispay://, revolut://, shortcuts://)
+      if (targetUrl.includes('://') && !targetUrl.startsWith('http')) {
+        window.location.href = targetUrl;
+        return;
+      }
+
+      // Per HTTPS Universal Links o link web: apri dinamicamente tramite tag <a> per massima compatibilità iOS PWA
+      const link = document.createElement('a');
+      link.href = targetUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => link.remove(), 150);
     } catch {
-      window.open(schemeUrl, '_self');
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const handleOpenShortcuts = (appName) => {
+    if (!appName) return;
+    const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent(appName)}`;
+    window.location.href = shortcutUrl;
   };
 
   return (
@@ -482,7 +507,7 @@ export const LinkedFinancialAppsProfileCard = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleOpenBank(targetUrl)}
+                      onClick={() => handleOpenBank(targetUrl, app.name)}
                       className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-black text-base sm:text-lg shadow-sm border border-black/5 dark:border-white/10 transition-all hover:shadow-md hover:scale-105 active:scale-95 cursor-pointer select-none"
                       style={{ backgroundColor: app.color || '#0071E3', color: app.textColor || '#FFFFFF' }}
                       title={`Apri ${app.name}`}
