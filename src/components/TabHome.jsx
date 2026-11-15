@@ -8,6 +8,7 @@ import { SmartSpotlightBar } from './SmartSpotlightBar';
 import { SavingsGoalsWidget } from './SavingsGoalsWidget';
 import { MonthRolloverBanner } from './MonthRolloverBanner';
 import { WalletSelectorPills } from './WalletSelectorPills';
+import { PayCycleCompass } from './PayCycleCompass';
 import {
   ChevronLeft,
   ChevronRight,
@@ -359,6 +360,13 @@ export const TabHome = ({ onOpenSheet }) => {
         <div>
           <SavingsGoalsWidget />
         </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2B. BUSSOLA CICLO (STIPENDIO / TARGET) - OPZIONALE       */}
+      {/* ========================================================= */}
+      <div className="px-0.5">
+        <PayCycleCompass />
       </div>
 
       {/* ========================================================= */}
