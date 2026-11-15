@@ -30,6 +30,7 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
   // Multi-Portafoglio & Split 50%
   const [targetWalletId, setTargetWalletId] = useState('main');
   const [isSplit50, setIsSplit50] = useState(false);
+  const [payer, setPayer] = useState('me'); // 'me' (pagato da me) | 'partner' (pagato dall'altro)
 
   // Modale creazione categoria personalizzata
   const [customCatModal, setCustomCatModal] = useState(false);
@@ -54,6 +55,7 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
       setTxDate(new Date().toISOString().split('T')[0]);
       setIsRecurring(false);
       setIsSplit50(false);
+      setPayer('me');
 
       // Inizializza conto di destinazione in base al conto attivo
       const initialWallet = (activeWalletId && activeWalletId !== 'all') ? activeWalletId : 'main';
@@ -148,13 +150,17 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
     try {
       const day = txDate ? new Date(txDate).getDate() : new Date().getDate();
       const finalAmount = isSplit50 ? Math.round((numeric / 2) * 100) / 100 : numeric;
-      const splitNote = isSplit50 ? `${note.trim() ? note.trim() + ' ' : ''}[Diviso 50% su tot. ${numeric} €]` : note.trim();
+      const payerTag = isSplit50 ? (payer === 'partner' ? '[Anticipato dall\'altro]' : '[Anticipato da me]') : '';
+      const splitNote = isSplit50
+        ? `${note.trim() ? note.trim() + ' ' : ''}[Diviso 50% su tot. ${numeric} €] ${payerTag}`.trim()
+        : note.trim();
 
       await addTransaction({
         type,
         amount: finalAmount,
         rawAmount: numeric,
         isSplit50,
+        payer: isSplit50 ? payer : 'me',
         walletId: targetWalletId,
         category: selectedCategory.name,
         note: splitNote,
@@ -435,31 +441,66 @@ export const TransactionModal = ({ isOpen, onClose, defaultType = 'expense', pre
 
               {/* Toggle Split 50% se conto condiviso o se l'utente vuole dividere la spesa */}
               {isExpense && (
-                <div className="pt-2 border-t border-neutral-200/50 dark:border-white/5 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block">
-                      Spesa divisa a metà (50%)
-                    </span>
-                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block">
-                      {isSplit50 
-                        ? `Addebita ${amountStr ? (parseAmount(amountStr) / 2).toFixed(2) : '0,00'} € (la tua quota)` 
-                        : 'Addebita l\'intero importo a questo conto'}
-                    </span>
+                <div className="pt-2 border-t border-neutral-200/50 dark:border-white/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block">
+                        Dividi spesa 50/50
+                      </span>
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block">
+                        {isSplit50 
+                          ? `Tua quota: ${amountStr ? (parseAmount(amountStr) / 2).toFixed(2) : '0,00'} € (su tot. ${amountStr ? parseAmount(amountStr).toFixed(2) : '0,00'} €)` 
+                          : 'Addebita l\'intero importo a questo conto'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSplit50(!isSplit50)}
+                      className={`w-11 h-6 rounded-full p-0.5 transition cursor-pointer ${
+                        isSplit50 ? 'bg-purple-600' : 'bg-neutral-300 dark:bg-neutral-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full shadow-sm transition transform ${
+                          isSplit50 ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsSplit50(!isSplit50)}
-                    className={`w-11 h-6 rounded-full p-0.5 transition cursor-pointer ${
-                      isSplit50 ? 'bg-purple-600' : 'bg-neutral-300 dark:bg-neutral-700'
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow-sm transition transform ${
-                        isSplit50 ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
+                  {/* Seleziona chi ha pagato / anticipato */}
+                  {isSplit50 && (
+                    <div className="pt-1.5 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
+                        Chi ha anticipato?
+                      </span>
+                      <div className="flex bg-neutral-200/70 dark:bg-neutral-700 p-0.5 rounded-xl text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setPayer('me')}
+                          className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                            payer === 'me'
+                              ? 'bg-white dark:bg-[#1C1C1E] text-purple-700 dark:text-purple-300 shadow-2xs'
+                              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900'
+                          }`}
+                        >
+                          Ho pagato io
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPayer('partner')}
+                          className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                            payer === 'partner'
+                              ? 'bg-white dark:bg-[#1C1C1E] text-purple-700 dark:text-purple-300 shadow-2xs'
+                              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900'
+                          }`}
+                        >
+                          Ha pagato l'altro
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

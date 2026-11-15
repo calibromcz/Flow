@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { 
   Wallet, 
@@ -7,14 +7,15 @@ import {
   Plus, 
   Trash2, 
   Layers, 
-  ChevronRight, 
-  Sparkles,
-  Check,
-  Copy,
+  MessageCircle, 
+  Check, 
+  ArrowRightLeft, 
   Share2,
-  KeyRound
+  TrendingDown,
+  Info
 } from 'lucide-react';
 import { Modal, message } from 'antd';
+import { formatCurrency, PrivacyAmount } from './CategoryIcon';
 
 export const WalletSelectorPills = () => {
   const { 
@@ -23,33 +24,21 @@ export const WalletSelectorPills = () => {
     setActiveWalletId, 
     addWallet, 
     deleteWallet,
-    joinSharedWallet
+    monthlyTransactions,
+    transactions
   } = useFinance();
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState('create'); // 'create' | 'join'
   const [walletName, setWalletName] = useState('');
   const [walletType, setWalletType] = useState('personal'); // 'personal' | 'shared'
   const [walletColor, setWalletColor] = useState('#007AFF');
-  const [inputShareCode, setInputShareCode] = useState('');
-  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
-  // Trova il conto attualmente attivo se è condiviso
+  // Conto attualmente attivo
   const activeWallet = wallets.find(w => w.id === activeWalletId);
   const isCurrentShared = activeWallet && activeWallet.type === 'shared';
 
   const handleCreate = () => {
-    if (modalTab === 'join') {
-      if (!inputShareCode.trim()) {
-        message.error("Inserisci il codice invito a 6 caratteri.");
-        return;
-      }
-      joinSharedWallet(inputShareCode);
-      setInputShareCode('');
-      setCreateModalOpen(false);
-      return;
-    }
-
     if (!walletName.trim()) {
       message.error("Inserisci un nome per il conto.");
       return;
@@ -65,18 +54,6 @@ export const WalletSelectorPills = () => {
     setWalletType('personal');
     setWalletColor('#007AFF');
     setCreateModalOpen(false);
-  };
-
-  const copyShareCode = (code) => {
-    if (!code) return;
-    try {
-      navigator.clipboard.writeText(code);
-      setCopiedCode(true);
-      message.success(`Codice invito ${code} copiato negli appunti!`);
-      setTimeout(() => setCopiedCode(false), 2500);
-    } catch {
-      message.info(`Codice invito: ${code}`);
-    }
   };
 
   const confirmDelete = (e, wallet) => {
@@ -99,8 +76,105 @@ export const WalletSelectorPills = () => {
     });
   };
 
+  // 2. CALCOLO METRICHE PERFEZIONATE SPLIT 50/50 SUI CONTI CONDIVISI
+  const sharedMetrics = useMemo(() => {
+    if (!isCurrentShared) return null;
+
+    // Movimenti appartenenti a questo conto condiviso
+    const currentList = (monthlyTransactions || []).filter(
+      t => (t.walletId || 'main') === activeWalletId && t.type === 'expense'
+    );
+
+    let totalCoupleExpense = 0; // Totale reale speso dalla coppia (intero)
+    let myTotalExpense = 0;     // Quota totale a mio carico (50% per spese divise o 100%)
+    let paidByMe = 0;          // Importo totale anticipato fisicamente da me
+    let paidByPartner = 0;     // Importo totale anticipato dal partner
+
+    currentList.forEach(t => {
+      const recordedAmt = Number(t.amount) || 0;
+      const rawAmt = Number(t.rawAmount) || (t.isSplit50 ? recordedAmt * 2 : recordedAmt);
+
+      if (t.isSplit50) {
+        totalCoupleExpense += rawAmt;
+        myTotalExpense += recordedAmt; // mia quota (50%)
+        if (t.payer === 'partner') {
+          paidByPartner += rawAmt;
+        } else {
+          // Default: pagato da me
+          paidByMe += rawAmt;
+        }
+      } else {
+        totalCoupleExpense += recordedAmt;
+        myTotalExpense += recordedAmt;
+        if (t.payer === 'partner') {
+          paidByPartner += recordedAmt;
+        } else {
+          paidByMe += recordedAmt;
+        }
+      }
+    });
+
+    // Calcolo Saldo Dare / Avere:
+    // Quota partner = totalCoupleExpense - myTotalExpense
+    // Se io ho pagato X e la mia quota è Y:
+    // saldo = paidByMe - myTotalExpense.
+    // Se saldo > 0: Il partner mi deve dare `saldo` €.
+    // Se saldo < 0: Io devo dare `Math.abs(saldo)` € al partner.
+    const partnerQuota = Math.max(0, totalCoupleExpense - myTotalExpense);
+    const balance = paidByMe - myTotalExpense;
+
+    return {
+      totalCoupleExpense,
+      myTotalExpense,
+      partnerQuota,
+      paidByMe,
+      paidByPartner,
+      balance,
+      transactionsCount: currentList.length
+    };
+  }, [isCurrentShared, monthlyTransactions, activeWalletId]);
+
+  // Invio Riepilogo WhatsApp formattato
+  const handleSendWhatsApp = () => {
+    if (!sharedMetrics || !activeWallet) return;
+
+    let balanceText = "Siamo pari! Nessun debito pendente. 🤝";
+    if (sharedMetrics.balance > 0.01) {
+      balanceText = `👉 *Mi devi dare: ${formatCurrency(sharedMetrics.balance)}*`;
+    } else if (sharedMetrics.balance < -0.01) {
+      balanceText = `👉 *Ti devo dare: ${formatCurrency(Math.abs(sharedMetrics.balance))}*`;
+    }
+
+    const messageLines = [
+      `📊 *Riepilogo Spese - Conto "${activeWallet.name}"*`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `• *Totale Speso Coppia:* ${formatCurrency(sharedMetrics.totalCoupleExpense)}`,
+      `• *La mia quota (50%):* ${formatCurrency(sharedMetrics.myTotalExpense)}`,
+      `• *Anticipato da me:* ${formatCurrency(sharedMetrics.paidByMe)}`,
+      `• *Anticipato da te:* ${formatCurrency(sharedMetrics.paidByPartner)}`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `⚖️ *SALDO FINALE:*`,
+      balanceText,
+      `━━━━━━━━━━━━━━━━━━`,
+      `_Inviato da FLOW (Finanza Personale)_`
+    ];
+
+    const fullText = messageLines.join('\n');
+    const encoded = encodeURIComponent(fullText);
+    const waUrl = `https://wa.me/?text=${encoded}`;
+
+    try {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 2500);
+    } catch {
+      navigator.clipboard.writeText(fullText);
+      message.success("Riepilogo copiato negli appunti!");
+    }
+  };
+
   return (
-    <div className="w-full space-y-1.5">
+    <div className="w-full space-y-2">
       {/* Barra orizzontale a pillole stile Apple */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
         {/* Pillola "Tutti i conti" */}
@@ -171,196 +245,206 @@ export const WalletSelectorPills = () => {
         <button
           type="button"
           onClick={() => {
-            setModalTab('create');
             setWalletName('');
             setWalletType('personal');
             setWalletColor('#007AFF');
-            setInputShareCode('');
             setCreateModalOpen(true);
           }}
           className="rounded-full px-2.5 py-1.5 text-xs font-semibold flex items-center gap-1 text-[#007AFF] dark:text-sky-400 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 border border-blue-200/60 dark:border-blue-800/40 transition active:scale-95 cursor-pointer shrink-0"
-          title="Aggiungi nuovo conto o unisciti a un conto condiviso"
+          title="Aggiungi nuovo conto o portafoglio"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Conto</span>
         </button>
       </div>
 
-      {/* Badge Informativo Conto Condiviso con Codice a 6 Cifre e Tap per Copiare */}
-      {isCurrentShared && activeWallet?.shareCode && (
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-purple-50/90 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/40 text-purple-900 dark:text-purple-200 text-[11px] animate-fade-in">
-          <div className="flex items-center gap-1.5 font-medium">
-            <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-            <span>Condiviso · </span>
-            <span className="font-mono font-bold tracking-wider bg-purple-200/60 dark:bg-purple-900/60 px-1.5 py-0.5 rounded text-[10px]">
-              {activeWallet.shareCode}
+      {/* CARD DETTAGLIO SPLIT 50/50 PER IL CONTO CONDIVISO ATTIVO */}
+      {isCurrentShared && sharedMetrics && (
+        <div className="apple-card rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-purple-50/80 via-white to-purple-50/30 dark:from-[#1C1C1E] dark:via-[#1C1C1E] dark:to-purple-950/20 border border-purple-200/80 dark:border-purple-800/40 shadow-xs animate-fade-in space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-neutral-900 dark:text-white block">
+                  Riepilogo Split 50/50 · {activeWallet.name}
+                </span>
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                  {sharedMetrics.transactionsCount} {sharedMetrics.transactionsCount === 1 ? 'uscita registrata' : 'uscite registrate'} questo mese
+                </span>
+              </div>
+            </div>
+
+            {/* Pulsante rapido WhatsApp */}
+            <button
+              type="button"
+              onClick={handleSendWhatsApp}
+              className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              title="Condividi i conti su WhatsApp con il partner"
+            >
+              <MessageCircle className="w-3.5 h-3.5 fill-white text-white" />
+              <span>Invia Riepilogo WhatsApp</span>
+            </button>
+          </div>
+
+          {/* Griglia Metriche: Totale Coppia | Mia Quota | Saldo Anticipi */}
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-100/80 dark:border-white/5">
+              <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 block truncate">
+                Totale Speso Coppia
+              </span>
+              <span className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white block mt-0.5">
+                <PrivacyAmount amount={sharedMetrics.totalCoupleExpense} />
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-100/80 dark:border-white/5">
+              <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 block truncate">
+                Tua Quota (50%)
+              </span>
+              <span className="text-sm sm:text-base font-extrabold text-purple-700 dark:text-purple-300 block mt-0.5">
+                <PrivacyAmount amount={sharedMetrics.myTotalExpense} />
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-purple-100/80 dark:border-white/5">
+              <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 block truncate">
+                {sharedMetrics.balance >= 0 ? "Credito per te" : "Debito per te"}
+              </span>
+              <span className={`text-sm sm:text-base font-extrabold block mt-0.5 ${
+                sharedMetrics.balance > 0.01 
+                  ? 'text-emerald-600 dark:text-emerald-400' 
+                  : sharedMetrics.balance < -0.01 
+                  ? 'text-rose-600 dark:text-rose-400' 
+                  : 'text-neutral-600 dark:text-neutral-300'
+              }`}>
+                <PrivacyAmount amount={Math.abs(sharedMetrics.balance)} />
+              </span>
+            </div>
+          </div>
+
+          {/* Spiegazione intuitiva chi deve dare a chi */}
+          <div className="p-2 rounded-xl bg-purple-100/60 dark:bg-purple-950/40 text-[11px] font-medium text-purple-900 dark:text-purple-200 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+              <span>
+                {sharedMetrics.balance > 0.01 ? (
+                  <>Hai anticipato più spese: <strong>il partner ti deve {formatCurrency(sharedMetrics.balance)}</strong></>
+                ) : sharedMetrics.balance < -0.01 ? (
+                  <>Il partner ha anticipato più spese: <strong>gli devi {formatCurrency(Math.abs(sharedMetrics.balance))}</strong></>
+                ) : (
+                  <>I conti sono perfettamente in pareggio!</>
+                )}
+              </span>
+            </div>
+            <span className="text-[10px] opacity-75 hidden sm:inline">
+              (Anticipati: Tu {formatCurrency(sharedMetrics.paidByMe)} · Partner {formatCurrency(sharedMetrics.paidByPartner)})
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => copyShareCode(activeWallet.shareCode)}
-            className="flex items-center gap-1 font-bold text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white px-2 py-0.5 rounded-lg hover:bg-purple-200/50 dark:hover:bg-purple-900/40 transition cursor-pointer"
-            title="Copia codice di condivisione"
-          >
-            {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-            <span>{copiedCode ? 'Copiato!' : 'Copia Codice Invito'}</span>
-          </button>
         </div>
       )}
 
-      {/* Modale Gestione / Creazione Conto */}
+      {/* Modale Creazione Conto */}
       <Modal
         title={
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#007AFF] flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
-            <span className="font-bold text-sm">Gestione Conti & Portafogli</span>
+            <span className="font-bold text-sm">Crea Nuovo Conto / Portafoglio</span>
           </div>
         }
         open={createModalOpen}
         onOk={handleCreate}
         onCancel={() => setCreateModalOpen(false)}
-        okText={modalTab === 'join' ? "Unisciti al Conto" : "Crea Conto"}
+        okText="Crea Conto"
         cancelText="Annulla"
         centered
       >
         <div className="space-y-4 pt-2">
-          {/* Selettore Tab "Crea Nuovo" vs "Unisciti con Codice" */}
-          <div className="flex bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setModalTab('create')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
-                modalTab === 'create'
-                  ? 'bg-white dark:bg-[#1C1C1E] text-neutral-900 dark:text-white shadow-xs'
-                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-              }`}
-            >
-              + Nuovo Conto
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalTab('join')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                modalTab === 'join'
-                  ? 'bg-white dark:bg-[#1C1C1E] text-purple-700 dark:text-purple-300 shadow-xs'
-                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Unisciti con Codice</span>
-            </button>
+          <div>
+            <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
+              Nome del Conto
+            </label>
+            <input
+              type="text"
+              value={walletName}
+              onChange={(e) => setWalletName(e.target.value)}
+              placeholder="es. Spese Casa, Conto 2, Cointestato, Viaggio..."
+              className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[#007AFF]"
+            />
           </div>
 
-          {modalTab === 'create' ? (
-            <>
-              <div>
-                <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
-                  Nome del Conto
-                </label>
-                <input
-                  type="text"
-                  value={walletName}
-                  onChange={(e) => setWalletName(e.target.value)}
-                  placeholder="es. Spese Casa, Conto 2, Cointestato, Viaggio..."
-                  className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-xs font-semibold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
-                  Tipologia Conto
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWalletType('personal');
-                      setWalletColor('#007AFF');
-                    }}
-                    className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
-                      walletType === 'personal'
-                        ? 'border-[#007AFF] bg-blue-50/80 dark:bg-blue-950/40 text-[#007AFF]'
-                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
-                    }`}
-                  >
-                    <User className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold block">Personale</span>
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block leading-tight">
-                        Spese e incassi 100% a tuo carico
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWalletType('shared');
-                      setWalletColor('#AF52DE');
-                    }}
-                    className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
-                      walletType === 'shared'
-                        ? 'border-purple-500 bg-purple-50/80 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
-                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold block">Condiviso / Cointestato</span>
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block leading-tight">
-                        Genera codice a 6 caratteri & split al 50%
-                      </span>
-                    </div>
-                  </button>
+          <div>
+            <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
+              Tipologia Conto
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setWalletType('personal');
+                  setWalletColor('#007AFF');
+                }}
+                className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                  walletType === 'personal'
+                    ? 'border-[#007AFF] bg-blue-50/80 dark:bg-blue-950/40 text-[#007AFF]'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                <User className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold block">Personale</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block leading-tight">
+                    Spese e incassi 100% a tuo carico
+                  </span>
                 </div>
-              </div>
+              </button>
 
-              <div>
-                <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
-                  Colore Distintivo
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {['#007AFF', '#34C759', '#AF52DE', '#FF9500', '#FF3B30', '#5856D6', '#5AC8FA', '#FF2D55', '#30B0C7'].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setWalletColor(c)}
-                      className={`w-7 h-7 rounded-full border-2 transition cursor-pointer ${
-                        walletColor === c ? 'border-neutral-900 dark:border-white scale-110 shadow-xs' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setWalletType('shared');
+                  setWalletColor('#AF52DE');
+                }}
+                className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                  walletType === 'shared'
+                    ? 'border-purple-500 bg-purple-50/80 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                <Users className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold block">Condiviso / Cointestato</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block leading-tight">
+                    Supporto split 50/50 & resoconto WhatsApp
+                  </span>
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
-                  Codice di Condivisione (6 caratteri)
-                </label>
-                <input
-                  type="text"
-                  value={inputShareCode}
-                  onChange={(e) => setInputShareCode(e.target.value.toUpperCase())}
-                  placeholder="es. FLW-84K"
-                  className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-sm font-mono font-bold tracking-widest text-center uppercase outline-none focus:border-purple-500"
-                  maxLength={10}
-                />
-              </div>
-
-              <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-xs text-purple-900 dark:text-purple-200 leading-relaxed">
-                <span className="font-bold block mb-1">Come funziona la sincronizzazione tra 2 smartphone?</span>
-                Chiedi al partner di aprire il suo conto condiviso su FLOW e toccare <strong>"Copia Codice Invito"</strong>. Incolla il codice qui per connettervi allo stesso conto condiviso.
-              </div>
+              </button>
             </div>
-          )}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block mb-1">
+              Colore Distintivo
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {['#007AFF', '#34C759', '#AF52DE', '#FF9500', '#FF3B30', '#5856D6', '#5AC8FA', '#FF2D55', '#30B0C7'].map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setWalletColor(c)}
+                  className={`w-7 h-7 rounded-full border-2 transition cursor-pointer ${
+                    walletColor === c ? 'border-neutral-900 dark:border-white scale-110 shadow-xs' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </Modal>
     </div>
   );
 };
-
