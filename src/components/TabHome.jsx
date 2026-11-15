@@ -8,7 +8,7 @@ import { SmartSpotlightBar } from './SmartSpotlightBar';
 import { SavingsGoalsWidget } from './SavingsGoalsWidget';
 import { MonthRolloverBanner } from './MonthRolloverBanner';
 import { WalletSelectorPills } from './WalletSelectorPills';
-import { PayCycleCompass } from './PayCycleCompass';
+import { CompassIntegratedWidget } from './CompassIntegratedWidget';
 import {
   ChevronLeft,
   ChevronRight,
@@ -319,45 +319,8 @@ export const TabHome = ({ onOpenSheet }) => {
               </div>
             </div>
 
-            {/* Bussola Giornaliera */}
-            <div className="mt-2 pt-3 border-t border-gray-100 dark:border-white/10">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Compass className="w-3.5 h-3.5 text-[#007AFF] dark:text-sky-400" />
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#007AFF] dark:text-sky-300">
-                  Bussola Giornaliera
-                </span>
-              </div>
-
-              {income === 0 ? (
-                <div className="text-xs text-[#86868B] dark:text-gray-400 italic">
-                  Inserisci le entrate del mese per attivare la Bussola Giornaliera.
-                </div>
-              ) : dailySpendable > 0 ? (
-                <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl p-2.5 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-emerald-800 dark:text-emerald-300 block font-medium">
-                      Spendibile oggi ({remainingDays} gg rimasti):
-                    </span>
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                      fino a <PrivacyAmount amount={dailySpendable} /> / giorno
-                    </span>
-                    <span className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80 block mt-0.5">
-                      Cashflow disponibile: <PrivacyAmount amount={monthlyMetrics.remainingMonthlyBudget} />
-                    </span>
-                  </div>
-                  <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
-                    In Target
-                  </span>
-                </div>
-              ) : (
-                <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-2xl p-2.5 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-[#FF3B30] shrink-0" />
-                  <span className="text-xs text-red-700 dark:text-red-300 font-medium leading-tight">
-                    Cashflow esaurito (le uscite del mese superano o eguagliano le entrate).
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Sezione Integrata Bussola: Switch con un tap tra "Bussola Mese" e "Bussola Ciclo" */}
+            <CompassIntegratedWidget />
           </div>
         </div>
 
@@ -365,13 +328,6 @@ export const TabHome = ({ onOpenSheet }) => {
         <div>
           <SavingsGoalsWidget />
         </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* 4B. BUSSOLA CICLO (STIPENDIO / TARGET) - OPZIONALE       */}
-      {/* ========================================================= */}
-      <div className="px-0.5">
-        <PayCycleCompass />
       </div>
 
       {/* ========================================================= */}
