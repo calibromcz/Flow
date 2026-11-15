@@ -166,17 +166,17 @@ export const TabProfile = () => {
       {/* ========================================================= */}
       {/* 2. GUIDA RAPIDA & FAQ (BARRA COMPATTA IN CIMA)            */}
       {/* ========================================================= */}
-      <div className="rounded-2xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs transition-all overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-zinc-900/90 border border-slate-200/80 dark:border-white/10 shadow-xs transition-all overflow-hidden">
         <button
           type="button"
           onClick={() => setIsFaqSectionOpen(prev => !prev)}
-          className="w-full p-3.5 flex items-center justify-between text-left select-none cursor-pointer"
+          className="w-full p-3.5 flex items-center justify-between text-left select-none cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/5 transition"
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center text-[#007AFF] dark:text-sky-400 shrink-0">
+            <div className="w-7 h-7 rounded-xl bg-blue-500/10 dark:bg-blue-400/15 flex items-center justify-center text-[#007AFF] dark:text-sky-400 shrink-0">
               <HelpCircle className="w-4 h-4" />
             </div>
-            <span className="text-sm font-medium text-neutral-900 dark:text-white">
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">
               Guida Rapida & FAQ
             </span>
           </div>
@@ -192,7 +192,7 @@ export const TabProfile = () => {
         </button>
 
         {isFaqSectionOpen && (
-          <div className="p-4 pt-2 border-t border-neutral-200/80 dark:border-neutral-700 divide-y divide-neutral-200/70 dark:divide-neutral-700/60 bg-white dark:bg-neutral-850 animate-fade-in">
+          <div className="p-4 pt-2 border-t border-slate-200/80 dark:border-white/10 divide-y divide-slate-200/70 dark:divide-white/10 bg-white dark:bg-zinc-900/95 animate-fade-in">
             {FAQ_ITEMS.map((item, idx) => {
               const isOpen = openFaqIndex === idx;
               return (
@@ -200,17 +200,17 @@ export const TabProfile = () => {
                   <button
                     type="button"
                     onClick={() => toggleFaq(idx)}
-                    className="w-full text-left flex items-center justify-between gap-3 text-xs font-semibold text-neutral-900 dark:text-neutral-100 hover:text-[#007AFF] dark:hover:text-sky-400 transition cursor-pointer select-none"
+                    className="w-full text-left flex items-center justify-between gap-3 text-xs font-semibold text-slate-900 dark:text-white hover:text-[#007AFF] dark:hover:text-sky-400 transition cursor-pointer select-none"
                   >
                     <span className="leading-snug">{item.q}</span>
                     <ChevronDown
-                      className={`w-3.5 h-3.5 shrink-0 text-neutral-400 transition-transform duration-200 ${
+                      className={`w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-zinc-400 transition-transform duration-200 ${
                         isOpen ? 'rotate-180 text-[#007AFF] dark:text-sky-400' : ''
                       }`}
                     />
                   </button>
                   {isOpen && (
-                    <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed pr-6 animate-fadeIn">
+                    <p className="mt-2 text-xs text-slate-600 dark:text-zinc-300 leading-relaxed pr-6 animate-fadeIn font-normal">
                       {item.a}
                     </p>
                   )}
