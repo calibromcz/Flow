@@ -114,14 +114,19 @@ export const TabHome = ({ onOpenSheet }) => {
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* 0. Smart Spotlight Bar (In Cima Immediata) */}
+      {/* 1. Header / Smart Spotlight Bar (In Cima Immediata) */}
       <SmartSpotlightBar />
+
+      {/* 2. Barra a pillole dei Conti (Principale, Tutti, + Conto) - Margine compatto mt-2 mb-3 */}
+      <div className="mt-2 mb-3 px-0.5">
+        <WalletSelectorPills />
+      </div>
 
       {/* Banner Intelligente Chiusura Mese (Rollover del Cashflow nel Salvadanaio) */}
       <MonthRolloverBanner />
 
       {/* ========================================================= */}
-      {/* 1. IN CIMA: SCHEDE / PULSANTI DI ENTRATE E USCITE        */}
+      {/* 3. SCHEDE / PULSANTI DI ENTRATE E USCITE                  */}
       {/* ========================================================= */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {/* Card Totale Entrate */}
@@ -203,7 +208,7 @@ export const TabHome = ({ onOpenSheet }) => {
       </div>
 
       {/* ========================================================= */}
-      {/* 2. SUBITO SOTTO: "CASHFLOW" (CON BUSSOLA) E "SALVADANAIO" */}
+      {/* 4. CARD CASHFLOW (CON BUSSOLA GIORNALIERA) E SALVADANAIO  */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Scheda Cashflow */}
@@ -363,21 +368,15 @@ export const TabHome = ({ onOpenSheet }) => {
       </div>
 
       {/* ========================================================= */}
-      {/* 2B. BUSSOLA CICLO (STIPENDIO / TARGET) - OPZIONALE       */}
+      {/* 4B. BUSSOLA CICLO (STIPENDIO / TARGET) - OPZIONALE       */}
       {/* ========================================================= */}
       <div className="px-0.5">
         <PayCycleCompass />
       </div>
 
       {/* ========================================================= */}
-      {/* 3. ANCORA SOTTO: BARRA A PILLOLE DEI CONTI / PORTAFOGLI   */}
+      {/* RIGA 5: ULTIME OPERAZIONI (SENZA TASTO +) & FISSI PREDITTIVI */}
       {/* ========================================================= */}
-      <div className="my-3 px-0.5">
-        <WalletSelectorPills />
-      </div>
-
-      {/* ========================================================= */}
-      {/* RIGA 4: ULTIME OPERAZIONI (SENZA TASTO +) & FISSI PREDITTIVI */}
       {/* ========================================================= */}
       <div className="apple-card rounded-3xl p-5 sm:p-6 space-y-3.5 shadow-xs">
         <div className="flex items-center justify-between">

@@ -134,8 +134,8 @@ export const WalletSelectorPills = () => {
     };
   }, [isCurrentShared, monthlyTransactions, activeWalletId]);
 
-  // Invio Riepilogo WhatsApp formattato
-  const handleSendWhatsApp = () => {
+  // Invio o Copia Riepilogo Condivisione (WhatsApp / Clipboard)
+  const handleShareSummary = () => {
     if (!sharedMetrics || !activeWallet) return;
 
     let balanceText = "Siamo pari! Nessun debito pendente. 🤝";
@@ -276,15 +276,15 @@ export const WalletSelectorPills = () => {
               </div>
             </div>
 
-            {/* Pulsante rapido WhatsApp */}
+            {/* Pulsante rapido Condividi Riepilogo */}
             <button
               type="button"
-              onClick={handleSendWhatsApp}
+              onClick={handleShareSummary}
               className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
-              title="Condividi i conti su WhatsApp con il partner"
+              title="Condividi o copia il riepilogo con i conti già fatti"
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-white text-white" />
-              <span>Invia Riepilogo WhatsApp</span>
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{copiedSummary ? 'Inviato / Copiato!' : 'Condividi Riepilogo'}</span>
             </button>
           </div>
 
